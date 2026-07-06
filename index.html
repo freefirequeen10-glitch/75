@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premium Esports Admin Portal | Control Deck</title>
+
+<!-- External Frameworks, Icons, and Fonts -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Refactored Modular Stylesheet -->
+<link rel="stylesheet" href="./admin.css">
+
+<!-- Tailwind Custom Theme Integration -->
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        rajdhani: ['Rajdhani', 'sans-serif'],
+        sans: ['Poppins', 'sans-serif'],
+      },
+      colors: {
+        admin: {
+          accent: '#FFD700', 
+          neon: '#b026ff', 
+          primary: '#0a0a0c', 
+          border: 'rgba(255, 215, 0, 0.3)',
+          glass: 'rgba(15, 15, 20, 0.75)'
+        }
+      }
+    }
+  }
+}
+</script>
+</head>
+<body class="font-sans min-h-screen custom-scrollbar">
+
+<!-- Dynamic Toast Hub -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+<!-- System Access Guard and Forms -->
+<div id="admin-auth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050505] overflow-y-auto">
+<div class="glass-admin w-full max-w-md p-8 rounded-3xl text-center space-y-6 relative overflow-hidden my-8">
+  <div class="absolute -top-10 -right-10 w-40 h-40 bg-admin-accent rounded-full blur-[60px] opacity-20"></div>
+  <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-admin-neon rounded-full blur-[60px] opacity-20"></div>
+  
+  <div id="setup-mode-banner" class="hidden bg-yellow-950/40 border border-admin-accent p-3 rounded-xl text-left text-xs text-yellow-200">
+    <strong class="text-white block mb-0.5"><i class="fa-solid fa-triangle-exclamation"></i> System Setup Active</strong>
+    No administrators configured. First registration will auto-escalate to Super Admin!
+  </div>
+
+  <div class="space-y-2 relative z-10">
+    <i class="fa-solid fa-crown text-5xl gold-text mb-2"></i>
+    <h1 class="text-3xl font-rajdhani font-bold uppercase tracking-widest text-white">Admin Deck</h1>
+    <p id="auth-sub-desc" class="text-xs text-gray-400 font-medium">Checking system status...</p>
+  </div>
+
+  <!-- Sign In Form -->
+  <form id="admin-login-form" class="space-y-4 text-left relative z-10">
+    <div>
+      <label class="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Admin Email</label>
+      <input type="email" id="adm-email" required placeholder="admin@esports.com" class="w-full px-4 py-3 rounded-xl text-sm font-medium">
+    </div>
+    <div>
+      <label class="block text-[10px] uppercase tracking-wider text-gray-400 mb-1.5 font-bold">Password</label>
+      <input type="password" id="adm-password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl text-sm font-medium">
+    </div>
+    <button type="submit" id="admin-login-btn" class="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 rounded-xl font-bold uppercase tracking-wider text-black transition-all shadow-[0_0_15px_rgba(255,215,0,0.4)]">Authorize Access</button>
+    
+    <div class="flex justify-between text-xs text-gray-400 pt-2">
+      <button type="button" onclick="window.toggleAuthForms('forgot')" class="hover:text-white transition">Forgot Password?</button>
+      <button type="button" onclick="window.toggleAuthForms('register')" class="hover:text-admin-accent font-bold transition">Register Admin</button>
+    </div>
+  </form>
+
+  <!-- Registration Claim Form -->
+  <form id="admin-register-form" class="space-y-4 hidden relative z-10">
+    <p class="text-xs text-gray-400 text-left mb-2">Requires a pending invite from a Super Admin (unless Setup Mode).</p>
+    <input type="text" id="reg-name" required placeholder="Full Name" class="w-full px-4 py-3 rounded-xl text-sm">
+    <input type="email" id="reg-email" required placeholder="Invited Email" class="w-full px-4 py-3 rounded-xl text-sm">
+    <input type="password" id="reg-password" required placeholder="Password" class="w-full px-4 py-3 rounded-xl text-sm">
+    <input type="password" id="reg-confirm" required placeholder="Confirm Password" class="w-full px-4 py-3 rounded-xl text-sm">
+    <button type="submit" id="register-submit-btn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl font-bold uppercase tracking-wider text-white transition-all shadow-[0_0_15px_rgba(176,38,255,0.4)]">Claim Account</button>
+    <button type="button" onclick="window.toggleAuthForms('login')" class="block w-full text-xs text-gray-400 hover:text-white">Back to Login</button>
+  </form>
+
+  <!-- Password Recovery Form -->
+  <form id="admin-forgot-form" class="space-y-4 hidden relative z-10">
+    <input type="email" id="forgot-email" required placeholder="Admin Email" class="w-full px-4 py-3 rounded-xl text-sm">
+    <button type="submit" id="forgot-submit-btn" class="w-full py-3 bg-admin-accent rounded-xl font-bold uppercase tracking-wider text-black">Send Reset Link</button>
+    <button type="button" onclick="window.toggleAuthForms('login')" class="block w-full text-xs text-gray-400 hover:text-white">Back to Login</button>
+  </form>
+</div>
+</div>
+
+<!-- Main Core Application Workspace -->
+<div id="app-container" class="min-h-screen flex flex-col hidden">
+
+<!-- Responsive Mobile Header -->
+<div id="mobile-topbar">
+  <button id="hamburger-btn" aria-label="Open menu" class="text-admin-accent">
+    <i class="fa-solid fa-bars text-2xl"></i>
+  </button>
+  <span class="font-rajdhani font-bold gold-text text-xl tracking-widest uppercase">Admin Deck</span>
+  <div class="w-8"></div>
+</div>
+
+<!-- Navigation Drawer Overlay -->
+<div id="sidebar-overlay"></div>
+<nav id="mobile-sidebar" class="custom-scrollbar">
+  <div>
+    <h2 class="font-rajdhani font-bold text-2xl tracking-widest gold-text border-b border-admin-border pb-3 flex items-center gap-2">
+      <i class="fa-solid fa-crown text-admin-neon"></i> ESPORTS
+    </h2>
+  </div>
+  <div class="flex-1 flex flex-col gap-1 mt-2" id="mobile-nav-links"></div>
+  <div class="text-xs text-gray-400 font-medium px-4 py-3 border border-admin-border/30 rounded-xl bg-black/40 text-center">
+    Role: <strong id="admin-role-badge-mobile" class="gold-text uppercase font-black tracking-wider">Standard</strong>
+  </div>
+</nav>
+
+<div class="flex flex-col md:flex-row flex-1">
+
+<!-- Desktop Main Side Panel -->
+<aside id="desktop-sidebar" class="w-full md:w-64 glass-admin md:min-h-screen flex flex-col p-5 space-y-6">
+  <div>
+    <h2 class="font-rajdhani font-bold text-2xl tracking-widest gold-text border-b border-admin-border pb-4 flex items-center gap-3">
+      <i class="fa-solid fa-crown text-admin-neon"></i> ESPORTS
+    </h2>
+  </div>
+
+  <nav class="flex-1 space-y-1.5 custom-scrollbar overflow-y-auto pr-2 pb-10" id="desktop-nav-links">
+    <button onclick="window.switchAdminView('dashboard', this)" class="admin-nav-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-chart-line text-sm w-5 text-center"></i> Dashboard
+    </button>
+    
+    <!-- Collapsible Match Manager Dropdown in Sidebar -->
+    <div class="space-y-1">
+      <button onclick="window.toggleSidebarMatches()" class="admin-nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-gamepad text-sm w-5 text-center"></i>
+          <span>Match Manager</span>
+        </div>
+        <i class="sidebar-matches-arrow fa-solid fa-chevron-down text-[10px] transition-transform duration-200"></i>
+      </button>
+      <div class="sidebar-matches-sub hidden pl-4 pr-1 py-1 space-y-1 bg-black/20 rounded-xl">
+        <button onclick="window.switchMatchManagerView('Solo', this)" class="admin-nav-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+          <i class="fa-solid fa-play text-[8px] opacity-60"></i> Solo Matches
+        </button>
+        <button onclick="window.switchMatchManagerView('Duo', this)" class="admin-nav-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+          <i class="fa-solid fa-play text-[8px] opacity-60"></i> Duo Matches
+        </button>
+        <button onclick="window.switchMatchManagerView('Squad', this)" class="admin-nav-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+          <i class="fa-solid fa-play text-[8px] opacity-60"></i> Squad Matches
+        </button>
+      </div>
+    </div>
+
+    <button onclick="window.switchAdminView('tournaments', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-trophy text-sm w-5 text-center"></i> Tournaments
+    </button>
+    <button onclick="window.switchAdminView('join-requests', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-ticket text-sm w-5 text-center"></i> Join Requests
+    </button>
+    <button onclick="window.switchAdminView('users', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-users text-sm w-5 text-center"></i> Manage Users
+    </button>
+    <button onclick="window.switchAdminView('deposits', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-arrow-turn-down text-sm w-5 text-center"></i> Deposits
+    </button>
+    <button onclick="window.switchAdminView('withdrawals', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-arrow-turn-up text-sm w-5 text-center"></i> Withdraws
+    </button>
+    
+    <div class="pt-4 pb-2 text-[10px] uppercase text-gray-500 font-bold tracking-widest pl-4 border-t border-white/10 mt-2">CMS & Config</div>
+    
+    <button onclick="window.switchAdminView('banners', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-regular fa-images text-sm w-5 text-center"></i> Sliders & Banners
+    </button>
+    <button onclick="window.switchAdminView('notifications', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-bullhorn text-sm w-5 text-center"></i> Notifications
+    </button>
+    <button onclick="window.switchAdminView('support', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-headset text-sm w-5 text-center"></i> Support Tickets
+    </button>
+    <button onclick="window.switchAdminView('payment-settings', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-credit-card text-sm w-5 text-center"></i> Payments Setup
+    </button>
+    <button onclick="window.switchAdminView('app-settings', this)" class="admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-mobile-screen text-sm w-5 text-center"></i> App Settings
+    </button>
+
+    <div class="super-admin-only hidden pt-4 pb-2 text-[10px] uppercase text-gray-500 font-bold tracking-widest pl-4 border-t border-white/10 mt-2">System</div>
+
+    <button onclick="window.switchAdminView('admin-mgmt', this)" class="super-admin-only hidden admin-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider">
+      <i class="fa-solid fa-user-shield text-sm w-5 text-center"></i> Staff Engine
+    </button>
+  </nav>
+
+  <div class="mt-auto space-y-3">
+    <div class="text-[11px] text-gray-400 font-medium px-4 py-2.5 border border-admin-border/30 rounded-xl bg-black/40 flex justify-between items-center">
+      <span>Access:</span>
+      <strong id="admin-role-badge" class="gold-text uppercase font-black tracking-widest">Standard</strong>
+    </div>
+    <button id="admin-logout-btn" class="w-full py-3 bg-red-900/30 border border-red-500/50 hover:bg-red-600/50 text-white transition-all text-xs font-bold uppercase tracking-widest rounded-xl">
+      <i class="fa-solid fa-power-off mr-2"></i> Disconnect
+    </button>
+  </div>
+</aside>
+
+<!-- Main Workspace Space -->
+<main class="flex-1 p-4 md:p-8 space-y-8 overflow-x-hidden relative">
+  <div class="absolute top-0 right-0 w-96 h-96 bg-admin-accent rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
+  <div class="absolute bottom-0 left-0 w-96 h-96 bg-admin-neon rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
+
+  <!-- PANEL: DASHBOARD -->
+  <section id="adm-view-dashboard" class="adm-panel fade-in space-y-6 relative z-10">
+    <div class="flex items-center gap-3">
+      <h3 class="text-3xl md:text-4xl font-rajdhani font-bold uppercase tracking-wider text-white">Live <span class="neon-text">Matrix</span></h3>
+    </div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass-admin p-5 rounded-2xl border-b-4 border-b-admin-accent flex flex-col justify-center items-center text-center hover:-translate-y-1 transition-transform">
+        <i class="fa-solid fa-users text-2xl text-gray-500 mb-2"></i>
+        <span class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Total Users</span>
+        <span id="stat-total-users" class="text-3xl font-rajdhani font-bold gold-text">0</span>
+      </div>
+      <div class="glass-admin p-5 rounded-2xl border-b-4 border-b-admin-neon flex flex-col justify-center items-center text-center hover:-translate-y-1 transition-transform">
+        <i class="fa-solid fa-gamepad text-2xl text-gray-500 mb-2"></i>
+        <span class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Active Arenas</span>
+        <span id="stat-total-tournaments" class="text-3xl font-rajdhani font-bold neon-text">0</span>
+      </div>
+      <div class="glass-admin p-5 rounded-2xl border-b-4 border-b-emerald-500 flex flex-col justify-center items-center text-center hover:-translate-y-1 transition-transform">
+        <i class="fa-solid fa-money-bill-transfer text-2xl text-gray-500 mb-2"></i>
+        <span class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Total Deposits</span>
+        <span id="stat-total-deposits" class="text-3xl font-rajdhani font-bold text-emerald-400">₹0</span>
+      </div>
+      <div class="glass-admin p-5 rounded-2xl border-b-4 border-b-rose-500 flex flex-col justify-center items-center text-center hover:-translate-y-1 transition-transform">
+        <i class="fa-solid fa-money-bill-wave text-2xl text-gray-500 mb-2"></i>
+        <span class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Total Withdraws</span>
+        <span id="stat-total-withdrawals" class="text-3xl font-rajdhani font-bold text-rose-400">₹0</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+       <div class="glass-admin p-4 rounded-xl flex items-center justify-between">
+          <div><span class="text-[10px] text-gray-400 uppercase block">Pending Dep.</span><strong id="stat-pending-deposits" class="text-xl gold-text">0</strong></div>
+          <i class="fa-solid fa-clock text-admin-accent opacity-50 text-xl"></i>
+       </div>
+       <div class="glass-admin p-4 rounded-xl flex items-center justify-between">
+          <div><span class="text-[10px] text-gray-400 uppercase block">Pending With.</span><strong id="stat-pending-withdrawals" class="text-xl text-rose-400">0</strong></div>
+          <i class="fa-solid fa-clock text-rose-400 opacity-50 text-xl"></i>
+       </div>
+       <div class="glass-admin p-4 rounded-xl flex items-center justify-between">
+          <div><span class="text-[10px] text-gray-400 uppercase block">Live Matches</span><strong id="stat-live-matches" class="text-xl neon-text">0</strong></div>
+          <i class="fa-solid fa-fire text-admin-neon opacity-50 text-xl"></i>
+       </div>
+       <div class="glass-admin p-4 rounded-xl flex items-center justify-between">
+          <div><span class="text-[10px] text-gray-400 uppercase block">Total Wallets</span><strong id="stat-total-wallet" class="text-xl text-emerald-400">₹0</strong></div>
+          <i class="fa-solid fa-wallet text-emerald-400 opacity-50 text-xl"></i>
+       </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 glass-admin p-6 rounded-3xl h-80">
+        <h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Financial Flow Matrix</h4>
+        <canvas id="financialFlowChart"></canvas>
+      </div>
+      <div class="glass-admin p-6 rounded-3xl h-80 flex flex-col">
+        <h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">User Demographics</h4>
+        <div class="flex-1 relative"><canvas id="userMetricsChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANEL: TOURNAMENTS -->
+  <section id="adm-view-tournaments" class="adm-panel fade-in space-y-6 hidden">
+    <div class="arena-header-section">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-admin-neon/30 to-admin-accent/20 flex items-center justify-center border border-admin-neon/30">
+              <i class="fa-solid fa-trophy text-admin-neon text-sm"></i>
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">Control Panel</span>
+          </div>
+          <h3 class="text-3xl md:text-4xl font-rajdhani font-bold uppercase tracking-wide text-white leading-none">
+            Arena <span class="neon-text">Manager</span>
+          </h3>
+          <p class="text-xs text-gray-500 font-medium mt-1.5 tracking-wide">Create and manage arenas for tournaments.</p>
+        </div>
+        <button id="btn-create-arena-main" onclick="window.triggerCreateArena(this)" class="btn-create-arena flex-shrink-0">
+          <i class="fa-solid fa-plus mr-2"></i> Create Arena
+        </button>
+      </div>
+    </div>
+
+    <!-- Tournament Dynamic Registration Form with Realtime Preview -->
+    <div id="tourn-form-container" class="glass-admin p-6 md:p-8 rounded-3xl space-y-6 hidden border border-admin-accent/50">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <h4 id="tourn-form-title" class="text-xl font-rajdhani font-bold uppercase gold-text">Deploy New Tournament</h4>
+        <button type="button" onclick="window.toggleTournamentForm(false)" class="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <!-- Layout split: 2 Columns on Desktop, Form left, Live Card Preview right -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Column 1 & 2: Form Fields -->
+        <form id="tournament-crud-form" class="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <input type="hidden" id="tourn-id">
+          
+          <!-- Tournament Title -->
+          <div class="space-y-1 md:col-span-2">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Tournament Title</label>
+            <input type="text" id="tourn-title" required placeholder="e.g. BGMI Weekly Skirmish" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Match Name -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Match Name</label>
+            <input type="text" id="tourn-match-name" required placeholder="e.g. Match 25 / Semi-Final" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+          
+          <!-- Game Selection -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Game Name</label>
+            <input type="text" id="tourn-game" required placeholder="BGMI / Free Fire" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Mode Selection -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Match Type / Mode</label>
+            <select id="tourn-mode" class="w-full px-4 py-3 rounded-xl text-xs font-medium" onchange="window.updateLiveMatchCardPreview(); window.updateWinnerPrizeDistribution();">
+              <option value="Solo">Solo</option>
+              <option value="Duo">Duo</option>
+              <option value="Squad">Squad</option>
+            </select>
+          </div>
+          
+          <!-- Map Selection -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Map</label>
+            <input type="text" id="tourn-map" required placeholder="Erangel / Bermuda" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Total Slots -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Total Slots</label>
+            <input type="number" id="tourn-total-slots" required placeholder="e.g. 100" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Entry Fee -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Entry Fee (₹)</label>
+            <input type="number" id="tourn-entry-fee" required placeholder="0 for free" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Prize Pool -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Prize Pool (₹)</label>
+            <input type="number" id="tourn-prize-pool" required placeholder="Total Pool" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Per Kill Reward -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Per Kill Reward (₹)</label>
+            <input type="number" id="tourn-per-kill" placeholder="Optional" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Winner Prize -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Winner Prize (₹)</label>
+            <input type="number" id="tourn-winner-prize" required placeholder="Winner Prize" class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+
+          <!-- Winner Prize Distribution Config -->
+          <div class="md:col-span-3 p-4 border border-white/10 rounded-xl bg-black/40 space-y-3">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Winner Prize Distribution</div>
+            
+            <div id="winner-dist-solo" class="hidden space-y-2">
+              <div class="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/5 gap-4">
+                <span class="text-xs font-bold text-white whitespace-nowrap">👤 Player 1 (₹)</span>
+                <input type="number" id="tourn-solo-1st" placeholder="0" class="w-32 px-3 py-1.5 rounded-lg text-xs font-bold text-right text-admin-accent bg-black" oninput="window.updateLiveMatchCardPreview()">
+              </div>
+            </div>
+            
+            <div id="winner-dist-duo" class="hidden space-y-2">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-black/30 p-3 rounded-xl border border-white/5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 1 (₹)</span>
+                  <input type="number" id="tourn-duo-1st" placeholder="0" class="w-24 px-3 py-1.5 rounded-lg text-xs font-bold text-right text-admin-neon bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 2 (₹)</span>
+                  <input type="number" id="tourn-duo-2nd" placeholder="0" class="w-24 px-3 py-1.5 rounded-lg text-xs font-bold text-right text-admin-neon bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+              </div>
+            </div>
+            
+            <div id="winner-dist-squad" class="hidden space-y-2">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-black/30 p-3 rounded-xl border border-white/5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 1 (₹)</span>
+                  <input type="number" id="tourn-squad-1st" placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-xs font-bold text-right text-emerald-400 bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 2 (₹)</span>
+                  <input type="number" id="tourn-squad-2nd" placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-xs font-bold text-right text-emerald-400 bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 3 (₹)</span>
+                  <input type="number" id="tourn-squad-3rd" placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-xs font-bold text-right text-emerald-400 bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-semibold text-gray-300">Player 4 (₹)</span>
+                  <input type="number" id="tourn-squad-4th" placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-xs font-bold text-right text-emerald-400 bg-black" oninput="window.updateLiveMatchCardPreview()">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule Metrics -->
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Schedule Date</label>
+            <input type="date" id="tourn-date" required class="w-full px-4 py-3 rounded-xl text-xs font-medium text-admin-neon" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Schedule Time</label>
+            <input type="time" id="tourn-time" required class="w-full px-4 py-3 rounded-xl text-xs font-medium text-admin-neon" oninput="window.updateLiveMatchCardPreview()">
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Visibility / Status</label>
+            <select id="tourn-status" class="w-full px-4 py-3 rounded-xl text-xs font-medium" onchange="window.updateLiveMatchCardPreview()">
+              <option value="upcoming">Upcoming</option>
+              <option value="live">Live</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+
+          <!-- Graphic Banner File / URL -->
+          <div class="space-y-1 md:col-span-3">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Banner Image (Upload or URL)</label>
+            <div class="flex gap-2">
+              <input type="text" id="tourn-image" placeholder="Image URL..." class="flex-1 px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()">
+              <input type="file" id="tourn-image-file" accept="image/*" class="hidden" onchange="window.handlePreviewFileInput(this)">
+              <button type="button" onclick="document.getElementById('tourn-image-file').click()" class="px-6 bg-admin-neon/20 border border-admin-neon text-admin-neon hover:bg-admin-neon hover:text-white rounded-xl text-xs uppercase font-bold transition-all"><i class="fa-solid fa-upload"></i></button>
+            </div>
+          </div>
+
+          <!-- Description / Rules -->
+          <div class="space-y-1 md:col-span-3">
+            <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Description / Rules</label>
+            <textarea id="tourn-desc" rows="3" placeholder="Match rules..." class="w-full px-4 py-3 rounded-xl text-xs font-medium" oninput="window.updateLiveMatchCardPreview()"></textarea>
+          </div>
+
+          <!-- Room ID / Room Pass Config -->
+          <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-white/10 rounded-xl bg-black/40 mt-2">
+            <div class="md:col-span-2 text-xs font-bold text-gray-400 uppercase">Room Details (Hidden until User Joins)</div>
+            
+            <div class="space-y-2">
+              <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Room ID</label>
+              <input type="text" id="tourn-room-id" placeholder="Room ID" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+              <div class="flex items-center gap-2 px-1">
+                <input type="checkbox" id="tourn-room-id-published" class="w-4 h-4 rounded border-admin-neon bg-black/50 text-admin-neon cursor-pointer">
+                <label for="tourn-room-id-published" class="text-[10px] uppercase text-gray-300 font-bold cursor-pointer">Publish Room ID</label>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="text-[10px] uppercase text-gray-400 font-bold ml-1">Room Password</label>
+              <input type="text" id="tourn-room-pass" placeholder="Room Password" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+              <div class="flex items-center gap-2 px-1">
+                <input type="checkbox" id="tourn-room-pass-published" class="w-4 h-4 rounded border-admin-neon bg-black/50 text-admin-neon cursor-pointer">
+                <label for="tourn-room-pass-published" class="text-[10px] uppercase text-gray-300 font-bold cursor-pointer">Publish Room Password</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Action Triggers -->
+          <div class="md:col-span-3 flex justify-end gap-4 pt-4 border-t border-white/10 mt-2">
+            <button type="button" onclick="window.toggleTournamentForm(false)" class="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold_300 uppercase hover:bg-white/10 transition">Cancel</button>
+            <button type="submit" id="tourn-save-btn" class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl text-xs font-bold text-white uppercase shadow-lg shadow-emerald-500/30 hover:scale-105 transition flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up"></i> Save Arena</button>
+          </div>
+        </form>
+
+        <!-- Column 3: Section 8 Realtime Match Card Preview -->
+        <div class="lg:col-span-1 space-y-4">
+          <div class="text-xs font-black text-gray-400 uppercase tracking-widest pl-1"><i class="fa-solid fa-magnifying-glass-chart text-admin-accent mr-1"></i> Live Preview Card</div>
+          
+          <div id="live-match-card-preview" class="tournament-card-premium status-active overflow-hidden">
+            <div class="flex flex-col min-h-0">
+              <div class="w-full aspect-[2/1] relative flex-shrink-0 bg-neutral-900 border-b border-white/5">
+                <img id="prev-card-banner" src="" class="w-full h-full object-cover hidden">
+                <div id="prev-card-banner-placeholder" class="w-full h-full flex flex-col items-center justify-center text-gray-600 gap-1.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-br from-admin-neon/10 to-transparent">
+                  <i class="fa-solid fa-image text-3xl opacity-30 text-admin-neon"></i>
+                  <span>No Banner Uploaded</span>
+                </div>
+                <span id="prev-card-time-badge" class="absolute top-3 right-3 px-2 py-0.5 bg-black/80 text-admin-accent font-black text-[9px] tracking-wider uppercase rounded border border-admin-accent/30"><i class="fa-solid fa-clock fa-spin mr-1"></i> TBD</span>
+              </div>
+              
+              <div class="p-4 flex flex-col justify-between gap-3 bg-black/40">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                      <span id="prev-card-mode-tag" class="card-mode-tag solo">👤 SOLO</span>
+                      <span id="prev-card-game" class="text-[9px] text-gray-500 font-bold uppercase tracking-widest truncate max-w-[120px]">BGMI</span>
+                    </div>
+                    <span id="prev-card-status-badge" class="card-status-badge status-active text-[8px] font-black tracking-wider px-2 py-0.5">Upcoming</span>
+                  </div>
+                  <h4 id="prev-card-title" class="font-rajdhani font-bold text-white text-base leading-tight truncate">BGMI Weekly Skirmish</h4>
+                  <div class="flex justify-between items-center mt-1">
+                    <p id="prev-card-map" class="text-[9px] text-gray-500 font-medium"><i class="fa-solid fa-map-location-dot mr-1"></i> Erangel</p>
+                    <p id="prev-card-match-name" class="text-[9px] text-admin-neon font-black uppercase tracking-wider">Match 1</p>
+                  </div>
+                </div>
+
+                <!-- Starts At & Starts In Premium Countdown Section -->
+                <div class="py-2.5 px-3 bg-black/50 border border-white/5 rounded-xl flex flex-col gap-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Starts At</span>
+                    <span id="prev-card-starts-at-display" class="text-[10px] text-admin-accent font-black tracking-wider uppercase">TBD</span>
+                  </div>
+                  <div class="flex justify-between items-center border-t border-white/5 pt-2">
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Starts In</span>
+                    <div id="prev-card-countdown-wrapper" class="countdown-container flex gap-1 items-center" data-starts-at="0">
+                      <!-- Automatically synchronized using our highly efficient single global countdown ticker -->
+                    </div>
+                    <span id="prev-card-live-badge" class="live-badge hidden text-xs font-black text-rose-500 tracking-widest animate-pulse"><i class="fa-solid fa-circle text-[8px] mr-1"></i> LIVE NOW</span>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="card-stat-pill bg-black/60">
+                    <span class="stat-label">Entry Fee</span>
+                    <span id="prev-card-entry" class="stat-value text-gray-200">₹0</span>
+                  </div>
+                  <div class="card-stat-pill bg-black/60">
+                    <span class="stat-label">Prize Pool</span>
+                    <span id="prev-card-pool" class="stat-value gold-text">₹0</span>
+                  </div>
+                  <div class="card-stat-pill bg-black/60">
+                    <span class="stat-label">Per Kill</span>
+                    <span id="prev-card-kill" class="stat-value text-emerald-400">₹0</span>
+                  </div>
+                  <div class="card-stat-pill bg-black/60">
+                    <span class="stat-label">Winner Prize</span>
+                    <span id="prev-card-winner-prize" class="stat-value text-admin-neon">₹0</span>
+                  </div>
+                </div>
+                
+                <!-- Slots Indicator -->
+                <div class="space-y-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                  <div class="flex justify-between items-center">
+                    <span id="prev-card-slots-label" class="text-[9px] text-gray-400 font-black uppercase tracking-widest">Slots Remaining: 100/100</span>
+                    <span id="prev-card-slots-status" class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Available</span>
+                  </div>
+                  <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;">
+                    <div id="prev-card-slots-progress" style="height:100%;width:0%;background:#10b981;border-radius:2px;transition:all 0.4s;"></div>
+                  </div>
+                  <div class="flex justify-between text-[8px] text-gray-600 font-bold uppercase tracking-wider">
+                    <span>0% Filled</span>
+                    <span id="prev-card-slots-remaining">100 Left</span>
+                  </div>
+                </div>
+
+                <!-- Interactive Join / Details Buttons Preview -->
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <div class="py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black text-center font-bold text-[10px] uppercase tracking-wider rounded-xl cursor-not-allowed opacity-85 shadow-[0_0_10px_rgba(255,215,0,0.2)]">Join Match</div>
+                  <div class="py-2.5 bg-white/5 border border-white/10 text-gray-400 text-center font-bold text-[10px] uppercase tracking-wider rounded-xl cursor-not-allowed">View Details</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Arena Categorization Tabs -->
+    <div class="arena-mode-tabs" id="arena-mode-tabs">
+      <button class="arena-tab solo-tab tab-active" onclick="window.switchArenaMode('Solo', this)">
+        <span class="tab-icon">👤</span>
+        <span class="tab-name text-gray-300">SOLO</span>
+        <span class="tab-count" id="count-solo">0 Arenas</span>
+      </button>
+      <button class="arena-tab duo-tab" onclick="window.switchArenaMode('Duo', this)">
+        <span class="tab-icon">👥</span>
+        <span class="tab-name text-gray-300">DUO</span>
+        <span class="tab-count" id="count-duo">0 Arenas</span>
+      </button>
+      <button class="arena-tab squad-tab" onclick="window.switchArenaMode('Squad', this)">
+        <span class="tab-icon">👨‍👩‍👦</span>
+        <span class="tab-name text-gray-300">SQUAD</span>
+        <span class="tab-count" id="count-squad">0 Arenas</span>
+      </button>
+    </div>
+
+    <!-- Live Search Box -->
+    <div class="arena-search-wrap max-w-lg">
+      <input type="text" id="arena-search-input" class="arena-search-input" placeholder="Search arenas by name or game…" oninput="window.renderCategorizedTournaments()">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+    </div>
+
+    <!-- Live Grid Container -->
+    <div id="arena-cards-grid" class="arena-cards-container grid grid-cols-1 xl:grid-cols-2 gap-5"></div>
+  </section>
+
+  <!-- PANEL: MATCH MANAGER -->
+  <section id="adm-view-matches" class="adm-panel fade-in space-y-6 hidden relative z-10">
+    <div class="arena-header-section">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-admin-neon/30 to-admin-accent/20 flex items-center justify-center border border-admin-neon/30">
+              <i class="fa-solid fa-gamepad text-admin-neon text-sm"></i>
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">Live Operations</span>
+          </div>
+          <h3 class="text-3xl md:text-4xl font-rajdhani font-bold uppercase tracking-wide text-white leading-none">
+            Match <span class="neon-text">Manager</span>
+          </h3>
+          <p class="text-xs text-gray-500 font-medium mt-1.5 tracking-wide">Enter player kills, auto-calculate rewards, and credit wallets in real time.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5">
+            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active Mode:</span>
+            <strong id="match-active-mode-badge" class="gold-text uppercase font-black tracking-widest text-xs">Solo</strong>
+          </div>
+          <button onclick="window.switchAdminView('tournaments')" class="btn-create-arena flex-shrink-0 text-xs">
+            <i class="fa-solid fa-plus mr-2"></i> Create New Match
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Specific Match Row/Grid -->
+    <div class="space-y-3">
+      <h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 pl-1">Available Matches</h4>
+      <div id="match-cards-grid" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Dynamically loaded match cards -->
+      </div>
+    </div>
+
+    <!-- Selected Match Deep-Dive Control Center (Hidden until a card is clicked) -->
+    <div id="selected-match-control-center" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Left Column: Match Details & Players Table -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Premium Live Stats Strip -->
+        <div class="glass-admin p-6 rounded-3xl relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-32 h-32 bg-admin-neon rounded-full blur-[50px] opacity-10"></div>
+          <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-admin-accent rounded-full blur-[50px] opacity-10"></div>
+          
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+            <div class="flex items-center gap-3">
+              <span id="selected-match-status" class="card-status-badge status-live">Live</span>
+              <h4 id="selected-match-title" class="text-2xl font-rajdhani font-bold text-white uppercase tracking-wider">--</h4>
+            </div>
+            <div class="text-[10px] text-gray-400 font-mono font-bold" id="selected-match-schedule">--</div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+            <div class="bg-black/30 border border-white/5 p-3 rounded-xl">
+              <span class="text-[9px] text-gray-500 font-bold uppercase block tracking-wider">Map</span>
+              <strong id="stat-match-map" class="text-sm font-bold text-gray-200">--</strong>
+            </div>
+            <div class="bg-black/30 border border-white/5 p-3 rounded-xl">
+              <span class="text-[9px] text-gray-500 font-bold uppercase block tracking-wider">Per Kill Prize</span>
+              <strong id="stat-match-per-kill" class="text-sm font-bold text-admin-accent">₹0</strong>
+            </div>
+            <div class="bg-black/30 border border-white/5 p-3 rounded-xl">
+              <span class="text-[9px] text-gray-500 font-bold uppercase block tracking-wider">Total Players</span>
+              <strong id="stat-match-players" class="text-sm font-bold text-white">0</strong>
+            </div>
+            <div class="bg-black/30 border border-white/5 p-3 rounded-xl">
+              <span class="text-[9px] text-gray-500 font-bold uppercase block tracking-wider">Total Kills</span>
+              <strong id="stat-match-total-kills" class="text-sm font-bold text-admin-neon">0</strong>
+            </div>
+            <div class="bg-black/30 border border-white/5 p-3 rounded-xl col-span-2 md:col-span-1">
+              <span class="text-[9px] text-gray-500 font-bold uppercase block tracking-wider">Total Rewards</span>
+              <strong id="stat-match-total-rewards" class="text-sm font-bold text-emerald-400">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Extended operational stats -->
+          <div class="grid grid-cols-2 gap-3 mt-3 text-center">
+            <div class="bg-black/20 border border-white/5 p-2 rounded-xl flex justify-between px-4 items-center">
+              <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Prize Pool</span>
+              <strong id="stat-match-prize-pool" class="text-xs font-bold text-admin-accent">₹0</strong>
+            </div>
+            <div class="bg-black/20 border border-white/5 p-2 rounded-xl flex justify-between px-4 items-center">
+              <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Entry Collection</span>
+              <strong id="stat-match-entry-collection" class="text-xs font-bold text-emerald-400">₹0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Players List Directory Card -->
+        <div class="glass-admin p-6 rounded-3xl space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-4">
+            <div class="flex items-center gap-2">
+              <button class="px-4 py-2 bg-admin-neon/20 border border-admin-neon/40 text-admin-neon rounded-xl text-xs font-bold uppercase tracking-wider">
+                Joined Players (<span id="count-match-players">0</span>)
+              </button>
+            </div>
+
+            <!-- Table Filters and Search -->
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="relative w-40">
+                <input type="text" id="match-player-search" placeholder="Search name, UID..." oninput="window.filterMatchPlayers()" class="w-full bg-black/60 border border-white/10 hover:border-admin-accent/50 rounded-xl px-3 py-2 text-[11px] font-semibold text-white focus:outline-none">
+              </div>
+              <div class="relative">
+                <select id="match-player-filter" onchange="window.filterMatchPlayers()" class="bg-black border border-white/10 rounded-xl px-3 py-2 text-[11px] text-gray-300 font-bold cursor-pointer focus:outline-none">
+                  <option value="all">All Status</option>
+                  <option value="online">Online Only</option>
+                  <option value="offline">Offline Only</option>
+                  <option value="premium">Premium Only</option>
+                  <option value="verified">Verified Only</option>
+                </select>
+              </div>
+              <div class="relative">
+                <select id="match-player-sort" onchange="window.filterMatchPlayers()" class="bg-black border border-white/10 rounded-xl px-3 py-2 text-[11px] text-gray-300 font-bold cursor-pointer focus:outline-none">
+                  <option value="newest">Newest Join</option>
+                  <option value="oldest">Oldest Join</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Players Table Container -->
+          <div class="overflow-x-auto rounded-xl border border-white/5 custom-scrollbar">
+            <table class="w-full text-left text-xs bg-black/30 border-collapse min-w-[750px]">
+              <thead class="bg-black/60 text-gray-400 uppercase tracking-widest text-[9px] border-b border-white/10">
+                <tr>
+                  <th class="p-3 text-center" style="width: 40px;">#</th>
+                  <th class="p-3">Player Name</th>
+                  <th class="p-3">In-Game Name</th>
+                  <th class="p-3">In-Game UID</th>
+                  <th class="p-3">UID</th>
+                  <th class="p-3 text-center" style="width: 80px;">Kills</th>
+                  <th class="p-3 text-center">Per Kill</th>
+                  <th class="p-3 text-center">Reward</th>
+                  <th class="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="match-players-table-body">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Match Players Pagination Block -->
+          <div id="match-players-pagination" class="flex justify-center items-center gap-2 pt-4 border-t border-white/5">
+            <button onclick="window.prevMatchPage()" id="btn-match-prev-page" class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center justify-center text-sm disabled:opacity-30">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div id="match-page-numbers-container" class="flex items-center gap-1.5"></div>
+            <button onclick="window.nextMatchPage()" id="btn-match-next-page" class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center justify-center text-sm disabled:opacity-30">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Operations Panel -->
+      <div class="space-y-6">
+        
+        <!-- How It Works Panel -->
+        <div class="glass-admin p-6 rounded-3xl border border-white/5 space-y-4">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-white/5 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-admin-neon"></i> How It Works?
+          </h4>
+          <ol class="space-y-3.5 text-xs text-gray-300 font-medium">
+            <li class="flex gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-admin-neon/20 text-admin-neon font-bold flex items-center justify-center text-[10px] flex-shrink-0">1</span>
+              <span>Enter match kills for each approved player inside the table.</span>
+            </li>
+            <li class="flex gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-admin-neon/20 text-admin-neon font-bold flex items-center justify-center text-[10px] flex-shrink-0">2</span>
+              <div class="space-y-1.5 flex-1">
+                <span>Total reward will be calculated automatically based on kills.</span>
+                <div class="px-3 py-1.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 rounded-lg font-black text-center text-[10px] tracking-wider uppercase">
+                  Reward = Kills × Per Kill Prize
+                </div>
+              </div>
+            </li>
+            <li class="flex gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-admin-neon/20 text-admin-neon font-bold flex items-center justify-center text-[10px] flex-shrink-0">3</span>
+              <span>Carefully review calculated rewards before initiating payouts.</span>
+            </li>
+            <li class="flex gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-admin-neon/20 text-admin-neon font-bold flex items-center justify-center text-[10px] flex-shrink-0">4</span>
+              <span>Click on <strong class="text-white">Credit Wallet</strong> to deploy credit transactions.</span>
+            </li>
+            <li class="flex gap-2.5">
+              <span class="w-5 h-5 rounded-full bg-admin-neon/20 text-admin-neon font-bold flex items-center justify-center text-[10px] flex-shrink-0">5</span>
+              <span>Once completed, wallets are credited and a transaction audit ledger is written.</span>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Important Notes Panel -->
+        <div class="glass-admin p-6 rounded-3xl border border-white/5 space-y-4">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-white/5 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-admin-accent"></i> Important Notes
+          </h4>
+          <ul class="space-y-2.5 text-xs text-gray-400 list-disc pl-4 font-medium">
+            <li>Kills must be greater than or equal to 0.</li>
+            <li>Reward payout operates on active live wallet connections.</li>
+            <li>Once wallet is credited, transaction parameters are permanently committed.</li>
+            <li>Utilize the <strong class="text-white">Credit All Rewards</strong> feature to run batch executions.</li>
+            <li class="text-rose-400 font-bold">Payouts are mathematically irreversible once confirmed.</li>
+          </ul>
+        </div>
+
+        <!-- Bulk Execution Controls -->
+        <div class="glass-admin p-6 rounded-3xl border border-admin-neon/30 text-center space-y-3 relative overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-t from-admin-neon/5 to-transparent pointer-events-none"></div>
+          <h5 class="text-sm font-bold uppercase text-white tracking-widest">Bulk Operations</h5>
+          <p class="text-[10px] text-gray-500 font-medium">Credit all rewards for eligible players with a single click.</p>
+          <button id="btn-credit-all-rewards" onclick="window.bulkCreditRewards()" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-500/30 transition-all">
+            <i class="fa-solid fa-money-bill-wave mr-2"></i> Credit All Rewards
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+  <!-- PANEL: JOIN REQUESTS -->
+  <section id="adm-view-join-requests" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Match <span class="neon-text">Join Requests</span></h3>
+    <div class="overflow-x-auto rounded-2xl border border-admin-border custom-scrollbar">
+      <table class="w-full text-left text-xs bg-black/50 border-collapse min-w-[800px]">
+        <thead class="bg-black/80 gold-text uppercase tracking-widest text-[10px] border-b border-admin-border">
+          <tr>
+            <th class="p-4">Player Details</th>
+            <th class="p-4">Tournament</th>
+            <th class="p-4">UID / IGN</th>
+            <th class="p-4">Req. Time</th>
+            <th class="p-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="join-requests-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PANEL: MANAGE USERS -->
+  <section id="adm-view-users" class="adm-panel fade-in space-y-6 hidden">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Admin Deck</h3>
+        <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">Control Center</p>
+      </div>
+      
+      <div class="flex-1 max-w-xl relative">
+        <input type="text" id="user-search" oninput="window.filterUsers()" placeholder="Search by name, email, UID or phone..." class="w-full pl-5 pr-12 py-3 bg-black/50 border border-white/10 focus:border-admin-accent rounded-xl text-xs font-semibold text-white placeholder-gray-500 focus:outline-none transition-all">
+        <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <button class="flex items-center gap-2 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-gray-300 hover:border-admin-accent/50 transition">
+          <i class="fa-solid fa-filter"></i> Filters <i class="fa-solid fa-chevron-down text-[9px] ml-1"></i>
+        </button>
+        
+        <div class="flex items-center gap-2">
+          <div class="w-10 h-10 rounded-full bg-black border border-admin-accent flex items-center justify-center p-0.5 relative">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=superadmin" class="w-full h-full rounded-full object-cover bg-neutral-900">
+            <span class="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#050505]"></span>
+          </div>
+          <div class="hidden sm:block text-left">
+            <div class="text-xs font-bold text-white flex items-center gap-1">Super Admin <i class="fa-solid fa-crown text-admin-accent text-[10px]"></i></div>
+            <span class="text-[9px] text-gray-500 uppercase tracking-widest font-bold block">Administrator</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-admin p-5 rounded-2xl border-l-4 border-l-purple-500 hover:-translate-y-1 transition relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+          <div class="space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">Total Users</span>
+            <strong id="users-stat-total" class="text-3xl font-rajdhani font-bold text-white">0</strong>
+            <span class="text-[10px] text-purple-400 font-bold block mt-1"><i class="fa-solid fa-arrow-trend-up mr-1"></i>12.5% from last month</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+            <i class="fa-solid fa-users text-purple-400 text-sm"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-8 opacity-40">
+          <svg viewBox="0 0 100 30" class="w-full h-full" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="purple-glow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#b026ff" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#b026ff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 25 Q15 15, 30 20 T60 10 T90 5 L100 5 L100 30 L0 30 Z" fill="url(#purple-glow)"/>
+            <path d="M0 25 Q15 15, 30 20 T60 10 T90 5 L100 5" fill="none" stroke="#b026ff" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="glass-admin p-5 rounded-2xl border-l-4 border-l-emerald-500 hover:-translate-y-1 transition relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+          <div class="space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">Online Users</span>
+            <strong id="users-stat-online" class="text-3xl font-rajdhani font-bold text-white">0</strong>
+            <span class="text-[10px] text-emerald-400 font-bold block mt-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 fa-pulse mr-1"></span> 9.7% of total</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+            <i class="fa-solid fa-circle text-emerald-400 text-sm"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-8 opacity-40">
+          <svg viewBox="0 0 100 30" class="w-full h-full" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="emerald-glow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 28 Q20 20, 40 25 T80 12 T100 8 L100 30 L0 30 Z" fill="url(#emerald-glow)"/>
+            <path d="M0 28 Q20 20, 40 25 T80 12 T100 8" fill="none" stroke="#10b981" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="glass-admin p-5 rounded-2xl border-l-4 border-l-amber-500 hover:-translate-y-1 transition relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+          <div class="space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">Premium Users</span>
+            <strong id="users-stat-premium" class="text-3xl font-rajdhani font-bold text-white">0</strong>
+            <span class="text-[10px] text-amber-400 font-bold block mt-1"><i class="fa-solid fa-crown mr-1"></i>27.5% of total</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+            <i class="fa-solid fa-crown text-amber-400 text-sm"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-8 opacity-40">
+          <svg viewBox="0 0 100 30" class="w-full h-full" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="amber-glow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 25 Q15 20, 35 25 T70 15 T100 4 L100 30 L0 30 Z" fill="url(#amber-glow)"/>
+            <path d="M0 25 Q15 20, 35 25 T70 15 T100 4" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="glass-admin p-5 rounded-2xl border-l-4 border-l-rose-500 hover:-translate-y-1 transition relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+          <div class="space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">Banned Users</span>
+            <strong id="users-stat-banned" class="text-3xl font-rajdhani font-bold text-white">0</strong>
+            <span class="text-[10px] text-rose-400 font-bold block mt-1"><i class="fa-solid fa-circle-exclamation mr-1"></i>1.2% of total</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+            <i class="fa-solid fa-user-slash text-rose-400 text-sm"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-8 opacity-40">
+          <svg viewBox="0 0 100 30" class="w-full h-full" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="rose-glow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#f43f5e" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 20 Q25 25, 50 15 T85 22 T100 18 L100 30 L0 30 Z" fill="url(#rose-glow)"/>
+            <path d="M0 20 Q25 25, 50 15 T85 22 T100 18" fill="none" stroke="#f43f5e" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Redesigned Horizontal Filter Bar -->
+    <div class="glass-admin p-4 rounded-2xl flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/50 border border-white/5">
+      <div class="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+        <div class="relative w-full sm:w-40 flex-shrink-0">
+          <select id="user-tier-filter" onchange="window.filterUsers()" class="w-full bg-black border border-white/10 hover:border-admin-accent/50 rounded-xl px-3.5 py-3 text-xs font-bold tracking-wide text-gray-300 focus:outline-none focus:ring-1 focus:ring-admin-accent cursor-pointer appearance-none pr-8">
+            <option value="all">All Roles</option>
+            <option value="premium">Premium Users</option>
+            <option value="normal">Normal Users</option>
+            <option value="banned">Banned Users</option>
+            <option value="online">Online Users</option>
+            <option value="offline">Offline Users</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+        </div>
+
+        <div class="relative w-full sm:w-40 flex-shrink-0">
+          <select id="user-verification-filter" onchange="window.filterUsers()" class="w-full bg-black border border-white/10 hover:border-admin-accent/50 rounded-xl px-3.5 py-3 text-xs font-bold tracking-wide text-gray-300 focus:outline-none focus:ring-1 focus:ring-admin-accent cursor-pointer appearance-none pr-8">
+            <option value="all">All Verification</option>
+            <option value="verified">Verified Profiles</option>
+            <option value="unverified">Unverified Profiles</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+        </div>
+
+        <div class="relative w-full sm:w-40 flex-shrink-0">
+          <select id="user-premium-filter" onchange="window.filterUsers()" class="w-full bg-black border border-white/10 hover:border-admin-accent/50 rounded-xl px-3.5 py-3 text-xs font-bold tracking-wide text-gray-300 focus:outline-none focus:ring-1 focus:ring-admin-accent cursor-pointer appearance-none pr-8">
+            <option value="all">All Premium</option>
+            <option value="premium">Premium Only</option>
+            <option value="normal">Normal Only</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+        </div>
+
+        <div class="relative w-full sm:w-40 flex-shrink-0">
+          <select id="user-rank-filter" onchange="window.filterUsers()" class="w-full bg-black border border-white/10 hover:border-admin-accent/50 rounded-xl px-3.5 py-3 text-xs font-bold tracking-wide text-gray-300 focus:outline-none focus:ring-1 focus:ring-admin-accent cursor-pointer appearance-none pr-8">
+            <option value="all">All Tiers</option>
+            <option value="Bronze">Bronze</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+            <option value="Diamond">Diamond</option>
+            <option value="Conqueror">Conqueror</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+        </div>
+
+        <div class="relative w-full sm:w-44 flex-shrink-0">
+          <select id="user-sort-by" onchange="window.filterUsers()" class="w-full bg-black border border-white/10 hover:border-admin-accent/50 rounded-xl px-3.5 py-3 text-xs font-bold tracking-wide text-gray-300 focus:outline-none focus:ring-1 focus:ring-admin-accent cursor-pointer appearance-none pr-8">
+            <option value="recently_added">Sort by: Recently Added</option>
+            <option value="highest_balance">Sort by: Wallet Balance</option>
+            <option value="alphabetical">Sort by: Alphabetical</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+        </div>
+      </div>
+
+      <div class="w-full xl:w-auto text-right">
+        <button id="btn-clear-filters" onclick="window.clearUserFilters()" class="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl px-5 py-3 text-xs font-bold text-rose-400 transition w-full xl:w-auto justify-center">
+          <i class="fa-solid fa-rotate-left"></i> Clear All
+        </button>
+      </div>
+    </div>
+
+    <!-- Dynamic Found Tracker -->
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">
+      Matched Users: <span id="stat-total-users-badge" class="gold-text">0</span> entries
+    </div>
+
+    <!-- User Card Grid Directory -->
+    <div id="users-directory" class="grid grid-cols-1 gap-4 font-medium"></div>
+
+    <!-- Premium Footer Pagination Block -->
+    <div id="users-pagination" class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-white/5">
+      <div class="flex items-center gap-2">
+        <button onclick="window.prevUserPage()" id="btn-prev-page" class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center justify-center text-sm disabled:opacity-30">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div id="page-numbers-container" class="flex items-center gap-1.5"></div>
+        <button onclick="window.nextUserPage()" id="btn-next-page" class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center justify-center text-sm disabled:opacity-30">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-500 font-medium">Items per page</span>
+        <select id="user-per-page-select" onchange="window.setUserPerPage(this.value)" class="bg-black border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 font-semibold focus:border-admin-neon focus:outline-none cursor-pointer">
+          <option value="5">5 / page</option>
+          <option value="10" selected>10 / page</option>
+          <option value="20">20 / page</option>
+          <option value="50">50 / page</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANEL: DEPOSITS -->
+  <section id="adm-view-deposits" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Deposits <span class="neon-text">Audit</span></h3>
+    <div class="overflow-x-auto rounded-2xl border border-admin-border custom-scrollbar">
+      <table class="w-full text-left text-xs bg-black/50 border-collapse min-w-[700px]">
+        <thead class="bg-black/80 text-gray-400 uppercase tracking-widest text-[10px] border-b border-admin-border">
+          <tr>
+            <th class="p-4">User</th>
+            <th class="p-4 text-emerald-400">Amount</th>
+            <th class="p-4">Ref ID / UTR</th>
+            <th class="p-4">Screenshot</th>
+            <th class="p-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="deposit-requests-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PANEL: WITHDRAWS -->
+  <section id="adm-view-withdrawals" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Payout <span class="neon-text">Ops</span></h3>
+    <div class="overflow-x-auto rounded-2xl border border-admin-border custom-scrollbar">
+      <table class="w-full text-left text-xs bg-black/50 border-collapse min-w-[700px]">
+        <thead class="bg-black/80 text-gray-400 uppercase tracking-widest text-[10px] border-b border-admin-border">
+          <tr>
+            <th class="p-4">User</th>
+            <th class="p-4 text-rose-400">Amount</th>
+            <th class="p-4">Payment Method</th>
+            <th class="p-4">Req. Date</th>
+            <th class="p-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="withdraw-requests-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PANEL: SLIDERS & BANNERS -->
+  <section id="adm-view-banners" class="adm-panel fade-in space-y-6 hidden">
+    <div class="arena-header-section">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-admin-neon/30 to-admin-accent/20 flex items-center justify-center border border-admin-neon/30">
+              <i class="fa-regular fa-images text-admin-neon text-sm"></i>
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">Assets Setup</span>
+          </div>
+          <h3 class="text-3xl md:text-4xl font-rajdhani font-bold uppercase tracking-wide text-white leading-none">
+            Visual <span class="neon-text">Assets</span>
+          </h3>
+          <p class="text-xs text-gray-500 font-medium mt-1.5 tracking-wide">Manage dynamic home sliders and game mode banners directly via Image URLs.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Home Sliders Section -->
+    <div class="glass-admin p-6 rounded-3xl space-y-6">
+      <h4 class="text-lg font-rajdhani font-bold uppercase gold-text border-b border-white/10 pb-2 flex items-center gap-2">
+        <i class="fa-solid fa-sliders text-admin-neon text-sm"></i> Home Carousel Sliders (Image URLs)
+      </h4>
+      
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <!-- Slider 1 -->
+        <div class="glass-admin p-4 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h5 class="text-xs font-bold uppercase text-gray-300 border-b border-white/10 pb-1.5 mb-2 flex justify-between items-center font-rajdhani tracking-wide">
+              <span>Home Slider 1</span>
+              <span class="text-[9px] text-admin-accent uppercase font-black">Slot 1</span>
+            </h5>
+            <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-2">
+              <img id="preview-slider-1" src="https://via.placeholder.com/400x200/000/fff?text=SLIDER+1" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+            </div>
+            <label class="block text-[9px] uppercase tracking-wider text-gray-500 mb-1 font-bold">Image URL</label>
+            <input type="text" id="input-slider-1" placeholder="https://example.com/slide1.jpg" class="w-full px-3 py-2 rounded-xl text-[10px] font-medium transition" oninput="window.updateSliderPreview(1, this.value)">
+          </div>
+          <button id="btn-update-slider-1" onclick="window.updateSlider('slider1', 1)" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold text-xs rounded-xl uppercase transition shadow-[0_0_10px_rgba(255,215,0,0.2)]">Update Slider 1</button>
+        </div>
+
+        <!-- Slider 2 -->
+        <div class="glass-admin p-4 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h5 class="text-xs font-bold uppercase text-gray-300 border-b border-white/10 pb-1.5 mb-2 flex justify-between items-center font-rajdhani tracking-wide">
+              <span>Home Slider 2</span>
+              <span class="text-[9px] text-admin-accent uppercase font-black">Slot 2</span>
+            </h5>
+            <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-2">
+              <img id="preview-slider-2" src="https://via.placeholder.com/400x200/000/fff?text=SLIDER+2" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+            </div>
+            <label class="block text-[9px] uppercase tracking-wider text-gray-500 mb-1 font-bold">Image URL</label>
+            <input type="text" id="input-slider-2" placeholder="https://example.com/slide2.jpg" class="w-full px-3 py-2 rounded-xl text-[10px] font-medium transition" oninput="window.updateSliderPreview(2, this.value)">
+          </div>
+          <button id="btn-update-slider-2" onclick="window.updateSlider('slider2', 2)" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold text-xs rounded-xl uppercase transition shadow-[0_0_10px_rgba(255,215,0,0.2)]">Update Slider 2</button>
+        </div>
+
+        <!-- Slider 3 -->
+        <div class="glass-admin p-4 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h5 class="text-xs font-bold uppercase text-gray-300 border-b border-white/10 pb-1.5 mb-2 flex justify-between items-center font-rajdhani tracking-wide">
+              <span>Home Slider 3</span>
+              <span class="text-[9px] text-admin-accent uppercase font-black">Slot 3</span>
+            </h5>
+            <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-2">
+              <img id="preview-slider-3" src="https://via.placeholder.com/400x200/000/fff?text=SLIDER+3" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+            </div>
+            <label class="block text-[9px] uppercase tracking-wider text-gray-500 mb-1 font-bold">Image URL</label>
+            <input type="text" id="input-slider-3" placeholder="https://example.com/slide3.jpg" class="w-full px-3 py-2 rounded-xl text-[10px] font-medium transition" oninput="window.updateSliderPreview(3, this.value)">
+          </div>
+          <button id="btn-update-slider-3" onclick="window.updateSlider('slider3', 3)" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold text-xs rounded-xl uppercase transition shadow-[0_0_10px_rgba(255,215,0,0.2)]">Update Slider 3</button>
+        </div>
+
+        <!-- Slider 4 -->
+        <div class="glass-admin p-4 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h5 class="text-xs font-bold uppercase text-gray-300 border-b border-white/10 pb-1.5 mb-2 flex justify-between items-center font-rajdhani tracking-wide">
+              <span>Home Slider 4</span>
+              <span class="text-[9px] text-admin-accent uppercase font-black">Slot 4</span>
+            </h5>
+            <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-2">
+              <img id="preview-slider-4" src="https://via.placeholder.com/400x200/000/fff?text=SLIDER+4" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+            </div>
+            <label class="block text-[9px] uppercase tracking-wider text-gray-500 mb-1 font-bold">Image URL</label>
+            <input type="text" id="input-slider-4" placeholder="https://example.com/slide4.jpg" class="w-full px-3 py-2 rounded-xl text-[10px] font-medium transition" oninput="window.updateSliderPreview(4, this.value)">
+          </div>
+          <button id="btn-update-slider-4" onclick="window.updateSlider('slider4', 4)" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold text-xs rounded-xl uppercase transition shadow-[0_0_10px_rgba(255,215,0,0.2)]">Update Slider 4</button>
+        </div>
+
+        <!-- Slider 5 -->
+        <div class="glass-admin p-4 rounded-2xl border border-white/5 space-y-3 flex flex-col justify-between">
+          <div>
+            <h5 class="text-xs font-bold uppercase text-gray-300 border-b border-white/10 pb-1.5 mb-2 flex justify-between items-center font-rajdhani tracking-wide">
+              <span>Home Slider 5</span>
+              <span class="text-[9px] text-admin-accent uppercase font-black">Slot 5</span>
+            </h5>
+            <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-2">
+              <img id="preview-slider-5" src="https://via.placeholder.com/400x200/000/fff?text=SLIDER+5" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+            </div>
+            <label class="block text-[9px] uppercase tracking-wider text-gray-500 mb-1 font-bold">Image URL</label>
+            <input type="text" id="input-slider-5" placeholder="https://example.com/slide5.jpg" class="w-full px-3 py-2 rounded-xl text-[10px] font-medium transition" oninput="window.updateSliderPreview(5, this.value)">
+          </div>
+          <button id="btn-update-slider-5" onclick="window.updateSlider('slider5', 5)" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-bold text-xs rounded-xl uppercase transition shadow-[0_0_10px_rgba(255,215,0,0.2)]">Update Slider 5</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Mode Match Banners Section -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Solo Match Banner -->
+      <div class="glass-admin p-5 rounded-2xl space-y-4 flex flex-col justify-between border border-white/5">
+        <div>
+          <h5 class="text-sm font-bold uppercase text-gray-300 border-b border-white/10 pb-2 flex items-center gap-2 font-rajdhani">
+            <i class="fa-solid fa-user text-admin-neon text-xs"></i> Solo Match Banner
+          </h5>
+          <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-3">
+            <img id="preview-banner-solo" src="https://via.placeholder.com/400x200/000/fff?text=SOLO+BANNER" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+          </div>
+          <label class="block text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-bold">Banner Image URL</label>
+          <input type="text" id="input-banner-solo" placeholder="https://example.com/solo_banner.jpg" class="w-full px-4 py-3 rounded-xl text-xs font-medium transition" oninput="window.updateBannerPreview('solo', this.value)">
+        </div>
+        <button onclick="window.saveCategoryBannerUrl('solo')" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl uppercase transition shadow-[0_0_15px_rgba(176,38,255,0.3)]">Update Solo Banner</button>
+      </div>
+
+      <!-- Duo Match Banner -->
+      <div class="glass-admin p-5 rounded-2xl space-y-4 flex flex-col justify-between border border-white/5">
+        <div>
+          <h5 class="text-sm font-bold uppercase text-gray-300 border-b border-white/10 pb-2 flex items-center gap-2 font-rajdhani">
+            <i class="fa-solid fa-users text-admin-neon text-xs"></i> Duo Match Banner
+          </h5>
+          <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-3">
+            <img id="preview-banner-duo" src="https://via.placeholder.com/400x200/000/fff?text=DUO+BANNER" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+          </div>
+          <label class="block text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-bold">Banner Image URL</label>
+          <input type="text" id="input-banner-duo" placeholder="https://example.com/duo_banner.jpg" class="w-full px-4 py-3 rounded-xl text-xs font-medium transition" oninput="window.updateBannerPreview('duo', this.value)">
+        </div>
+        <button onclick="window.saveCategoryBannerUrl('duo')" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl uppercase transition shadow-[0_0_15px_rgba(176,38,255,0.3)]">Update Duo Banner</button>
+      </div>
+
+      <!-- Squad Match Banner -->
+      <div class="glass-admin p-5 rounded-2xl space-y-4 flex flex-col justify-between border border-white/5">
+        <div>
+          <h5 class="text-sm font-bold uppercase text-gray-300 border-b border-white/10 pb-2 flex items-center gap-2 font-rajdhani">
+            <i class="fa-solid fa-users-rectangle text-admin-neon text-xs"></i> Squad Match Banner
+          </h5>
+          <div class="relative w-full aspect-[2/1] rounded-xl border border-white/10 bg-black/40 overflow-hidden mb-3">
+            <img id="preview-banner-squad" src="https://via.placeholder.com/400x200/000/fff?text=SQUAD+BANNER" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x200/ef4444/fff?text=INVALID+URL'">
+          </div>
+          <label class="block text-[10px] uppercase tracking-wider text-gray-500 mb-1.5 font-bold">Banner Image URL</label>
+          <input type="text" id="input-banner-squad" placeholder="https://example.com/squad_banner.jpg" class="w-full px-4 py-3 rounded-xl text-xs font-medium transition" oninput="window.updateBannerPreview('squad', this.value)">
+        </div>
+        <button onclick="window.saveCategoryBannerUrl('squad')" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl uppercase transition shadow-[0_0_15px_rgba(176,38,255,0.3)]">Update Squad Banner</button>
+      </div>
+    </div>
+
+    <!-- Hidden dummy elements to satisfy legacy script references -->
+    <form id="slider-image-form" class="hidden">
+      <input type="text" id="slider-url">
+      <input type="file" id="slider-image-file">
+      <button type="submit" id="slider-submit-btn"></button>
+    </form>
+    <div id="banners-list" class="hidden"></div>
+  </section>
+
+  <!-- PANEL: PAYMENTS GATEWAY SETUP -->
+  <section id="adm-view-payment-settings" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Payment <span class="neon-text">Gateways</span></h3>
+    <div class="glass-admin p-6 md:p-8 rounded-3xl max-w-2xl space-y-6">
+      <form id="payment-settings-form" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Official UPI ID</label>
+             <input type="text" id="pay-upi-id" required placeholder="yourname@upi" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+           </div>
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Account Holder Name</label>
+             <input type="text" id="pay-account-name" placeholder="Esports Company Pvt Ltd" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+           </div>
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Minimum Deposit (₹)</label>
+             <input type="number" id="pay-min-deposit" required placeholder="e.g. 10" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+           </div>
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Minimum Withdraw (₹)</label>
+             <input type="number" id="pay-min-withdraw" required placeholder="e.g. 50" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+           </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 items-center bg-black/40 p-4 rounded-xl border border-white/5">
+          <div class="flex-1 w-full">
+            <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-2">QR Code Graphic Upload</label>
+            <input type="file" id="pay-qr-file" accept="image/*" class="w-full text-xs text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-admin-neon/20 file:text-admin-neon hover:file:bg-admin-neon hover:file:text-white">
+          </div>
+          <div class="w-32 h-32 rounded-xl bg-black border border-admin-border flex items-center justify-center p-2 relative overflow-hidden">
+            <img id="pay-qr-preview" src="" alt="QR" class="max-w-full max-h-full object-contain hidden">
+            <span id="pay-qr-preview-placeholder" class="text-[9px] text-gray-500 font-bold">No QR</span>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Deposit Notice</label>
+             <textarea id="pay-deposit-note" rows="2" placeholder="Note shown on add money page..." class="w-full px-4 py-3 rounded-xl text-xs font-medium"></textarea>
+           </div>
+           <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Withdraw Notice</label>
+             <textarea id="pay-withdraw-note" rows="2" placeholder="Note shown on withdraw page..." class="w-full px-4 py-3 rounded-xl text-xs font-medium"></textarea>
+           </div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t border-white/10 mt-2">
+          <button type="submit" id="pay-submit-btn" class="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(255,215,0,0.3)] hover:scale-105 transition flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Save Gateways
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- PANEL: APP CONFIG -->
+  <section id="adm-view-app-settings" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">App <span class="neon-text">Config</span></h3>
+    <div class="glass-admin p-6 md:p-8 rounded-3xl max-w-3xl space-y-6">
+       <form id="app-settings-form" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">App Name</label>
+                <input type="text" id="app-name" placeholder="Esports Arena" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Referral Bonus (₹)</label>
+                <input type="number" id="app-ref-bonus" placeholder="e.g. 10" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">WhatsApp Support</label>
+                <input type="text" id="app-whatsapp" placeholder="+91..." class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Telegram Link</label>
+                <input type="url" id="app-telegram" placeholder="t.me/..." class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Instagram Link</label>
+                <input type="url" id="app-instagram" placeholder="instagram.com/..." class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+             <div>
+                <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">YouTube Channel</label>
+                <input type="url" id="app-youtube" placeholder="youtube.com/..." class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+             </div>
+          </div>
+
+          <div class="flex items-center justify-between bg-rose-950/20 p-4 border border-rose-500/30 rounded-xl">
+            <div>
+              <label class="block text-xs text-white font-bold uppercase tracking-wider">Maintenance Mode</label>
+              <span class="text-[10px] text-gray-400 block font-medium">Blocks user access to app features.</span>
+            </div>
+            <input type="checkbox" id="app-maintenance" class="w-6 h-6 rounded border-rose-500 bg-black/50 text-rose-500 cursor-pointer">
+          </div>
+
+          <div class="flex justify-end pt-4 border-t border-white/10">
+             <button type="submit" id="app-submit-btn" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(176,38,255,0.4)] hover:scale-[1.02] transition"><i class="fa-solid fa-satellite-dish mr-2"></i> Sync App Data</button>
+          </div>
+       </form>
+    </div>
+  </section>
+
+  <!-- PANEL: BROADCAST CENTER -->
+  <section id="adm-view-notifications" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Broadcast <span class="neon-text">Center</span></h3>
+    <div class="glass-admin p-6 md:p-8 rounded-3xl max-w-2xl space-y-6">
+      <form id="broadcast-notif-form" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Notif Type</label>
+             <select id="notif-type" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+               <option value="popup">App Popup</option>
+               <option value="notice">Tournament Notice</option>
+               <option value="offer">Special Offer</option>
+               <option value="announcement">Global Announcement</option>
+             </select>
+          </div>
+          <div>
+             <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Target UID (Empty for All)</label>
+             <input type="text" id="notif-target-user" placeholder="Specific UID" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+          </div>
+        </div>
+        <div>
+           <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Header Title</label>
+           <input type="text" id="notif-title" required placeholder="Mega Tournament Live!" class="w-full px-4 py-3 rounded-xl text-xs font-medium text-admin-accent">
+        </div>
+        <div>
+           <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Message Body</label>
+           <textarea id="notif-message" required rows="3" placeholder="Enter message..." class="w-full px-4 py-3 rounded-xl text-xs font-medium"></textarea>
+        </div>
+        <button type="submit" id="notif-submit-btn" class="w-full py-4 bg-gradient-to-r from-purple-600 to-admin-neon rounded-xl text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-purple-500/30 hover:scale-[1.02] transition"><i class="fa-solid fa-paper-plane mr-2"></i> Launch Broadcast</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- PANEL: SUPPORT DESK -->
+  <section id="adm-view-support" class="adm-panel fade-in space-y-6 hidden">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Support <span class="neon-text">Desk</span></h3>
+    <div id="support-tickets-feed" class="grid grid-cols-1 md:grid-cols-2 gap-4 font-medium"></div>
+  </section>
+
+  <!-- PANEL: STAFF ENGINE -->
+  <section id="adm-view-admin-mgmt" class="super-admin-only hidden adm-panel fade-in space-y-6">
+    <h3 class="text-3xl font-rajdhani font-bold uppercase tracking-wider text-white">Staff <span class="neon-text">Engine</span></h3>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="glass-admin p-6 rounded-3xl space-y-4 h-fit">
+        <h4 class="text-sm font-bold text-admin-accent uppercase tracking-wider border-b border-white/10 pb-2">Issue Credential</h4>
+        <form id="invite-admin-form" class="space-y-4 font-medium">
+          <input type="text" id="inv-name" required placeholder="Staff Full Name" class="w-full px-4 py-3 rounded-xl text-xs">
+          <input type="email" id="inv-email" required placeholder="Gmail Address" class="w-full px-4 py-3 rounded-xl text-xs">
+          <select id="inv-role" class="w-full px-4 py-3 rounded-xl text-xs text-admin-neon">
+            <option value="admin">Standard Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <button type="submit" id="inv-submit-btn" class="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition">Dispatch Invite</button>
+        </form>
+      </div>
+      <div class="lg:col-span-2 glass-admin p-6 rounded-3xl space-y-4">
+        <h4 class="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">Active Hierarchy</h4>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs bg-black/30 border-collapse min-w-[500px]">
+            <thead class="bg-black/80 gold-text uppercase font-bold tracking-widest text-[10px] border-b border-admin-border/50">
+              <tr>
+                <th class="p-3">Identity</th>
+                <th class="p-3">Role</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admins-list-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+</div>
+
+<!-- Screenshot Preview Modal -->
+<div id="preview-modal" onclick="window.closePreview()" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+<img id="preview-image" src="" alt="Screenshot" class="max-w-full max-h-[90vh] rounded-xl border border-admin-neon shadow-[0_0_30px_rgba(176,38,255,0.3)]">
+</div>
+
+<!-- Wallet Configuration Modal -->
+<div id="wallet-modal" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
+<div class="glass-admin w-full max-w-sm p-8 rounded-3xl space-y-5 relative shadow-[0_0_40px_rgba(255,215,0,0.15)] border-t border-admin-accent">
+  <h4 class="text-2xl font-rajdhani font-bold uppercase text-white tracking-widest text-center">Wallet Config</h4>
+  <div class="space-y-4">
+    <input type="hidden" id="modal-user-id">
+    <div class="text-center text-xs text-gray-400 mb-2">Targeting User UID: <span id="modal-uid-display" class="text-admin-neon font-mono font-bold"></span></div>
+    
+    <div>
+       <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Amount (₹)</label>
+       <input type="number" id="manual-amount" placeholder="0" class="w-full px-4 py-3 rounded-xl text-lg font-bold text-center gold-text">
+    </div>
+    <div>
+       <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Reason / Notes</label>
+       <input type="text" id="manual-reason" placeholder="e.g. Tournament Win, Refund..." class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+    </div>
+    
+    <div class="grid grid-cols-2 gap-4 pt-2">
+      <button onclick="window.executeWalletAction('admin_credit')" class="py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-600/30 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-arrow-turn-down"></i> Credit</button>
+      <button onclick="window.executeWalletAction('admin_debit')" class="py-3 bg-rose-600 hover:bg-rose-500 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-600/30 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-arrow-turn-up"></i> Debit</button>
+    </div>
+    <button onclick="window.closeWalletModal()" class="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs text-gray-400 uppercase font-bold transition">Dismiss</button>
+  </div>
+</div>
+</div>
+
+<!-- Wallet History Ledger Modal -->
+<div id="history-modal" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
+  <div class="glass-admin w-full max-w-lg p-6 rounded-3xl space-y-4 relative shadow-[0_0_40px_rgba(176,38,255,0.15)] border-t border-admin-neon max-h-[85vh] flex flex-col">
+    <h4 class="text-2xl font-rajdhani font-bold uppercase text-white tracking-widest text-center flex-shrink-0">Transaction Ledger</h4>
+    <div class="text-center text-xs text-gray-400 flex-shrink-0">UID Ledger: <span id="history-uid-display" class="text-admin-neon font-mono font-bold"></span></div>
+    
+    <div id="history-logs-container" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 py-2 min-h-[250px]"></div>
+    
+    <button onclick="window.closeHistoryModal()" class="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs text-gray-400 uppercase font-bold transition flex-shrink-0">Dismiss</button>
+  </div>
+</div>
+
+<!-- Modern Profile Edit Modal -->
+<div id="user-edit-modal" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
+  <div class="glass-admin w-full max-w-sm p-6 rounded-3xl space-y-4 relative shadow-[0_0_40px_rgba(255,215,0,0.15)] border-t border-admin-accent flex flex-col">
+    <h4 class="text-2xl font-rajdhani font-bold uppercase text-white tracking-widest text-center">Edit Profile</h4>
+    <form id="user-edit-form" class="space-y-4">
+      <input type="hidden" id="edit-user-id">
+      <div>
+        <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Username</label>
+        <input type="text" id="edit-username" required placeholder="User name" class="w-full px-4 py-3 rounded-xl text-xs font-semibold">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Avatar Image URL</label>
+        <input type="url" id="edit-avatar" placeholder="https://example.com/avatar.png" class="w-full px-4 py-3 rounded-xl text-xs font-medium">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-gray-400 font-bold ml-1 mb-1">Rank Status</label>
+        <select id="edit-rank" class="w-full px-4 py-3 rounded-xl text-xs font-semibold text-admin-neon cursor-pointer">
+          <option value="Bronze">Bronze</option>
+          <option value="Silver">Silver</option>
+          <option value="Gold">Gold</option>
+          <option value="Diamond">Diamond</option>
+          <option value="Conqueror">Conqueror</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button type="submit" class="py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all">Save Changes</button>
+        <button type="button" onclick="window.closeEditModal()" class="py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs text-gray-400 uppercase font-bold transition">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Module Loading Sequence -->
+<script type="module" src="./utils.js"></script>
+<script type="module" src="./firebase.js"></script>
+<script type="module" src="./auth.js"></script>
+<script type="module" src="./admin.js"></script>
+<script type="module" src="./users.js"></script>
+<script type="module" src="./wallet.js"></script>
+<script type="module" src="./matches.js"></script>
+<script type="module" src="./tournaments.js"></script>
+<script type="module" src="./withdraw.js"></script>
+<script type="module" src="./transactions.js"></script>
+<script type="module">
+  import { db } from "./firebase.js";
+  import { 
+    doc, 
+    getDoc, 
+    setDoc, 
+    collection, 
+    onSnapshot, 
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // Check URL validation safely
+  function isValidHttpUrl(url) {
+    let u;
+    try {
+      u = new URL(url);
+    } catch (_) {
+      return false;  
+    }
+    return u.protocol === "http:" || u.protocol === "https:";
+  }
+
+  // Starts real-time sliders and category banners load cycles
+  function initVisualAssets() {
+    ['solo', 'duo', 'squad'].forEach(async (type) => {
+       try {
+         const docSnap = await getDoc(doc(db, "sliderImages", `${type}Banner`));
+         const previewEl = document.getElementById(`preview-banner-${type}`);
+         const inputEl = document.getElementById(`input-banner-${type}`);
+         if (docSnap.exists()) {
+           const url = docSnap.data().imageUrl || docSnap.data().url || '';
+           if (previewEl && url) previewEl.src = url;
+           if (inputEl && url) inputEl.value = url;
+         }
+       } catch (e) {
+         console.error(`Failed to load category banner for ${type}:`, e);
+       }
+    });
+
+    onSnapshot(collection(db, "sliderImages"), (snap) => {
+      for (let i = 1; i <= 5; i++) {
+        const preview = document.getElementById('preview-slider-' + i);
+        const input = document.getElementById('input-slider-' + i);
+        if (preview) preview.src = `https://via.placeholder.com/400x200/000/fff?text=SLIDER+${i}`;
+        if (input) input.value = '';
+      }
+
+      snap.forEach(d => {
+        const docId = d.id;
+        const indexMatch = docId.match(/slider(\d+)/);
+        if (indexMatch) {
+          const index = indexMatch[1];
+          const data = d.data();
+          const imageUrl = data.imageUrl || data.url || '';
+          const preview = document.getElementById('preview-slider-' + index);
+          const input = document.getElementById('input-slider-' + index);
+          if (imageUrl) {
+            if (preview) preview.src = imageUrl;
+            if (input) input.value = imageUrl;
+          }
+        } else if (docId === 'soloBanner' || docId === 'duoBanner' || docId === 'squadBanner') {
+          const type = docId.replace('Banner', '').toLowerCase();
+          const data = d.data();
+          const imageUrl = data.imageUrl || data.url || '';
+          const previewEl = document.getElementById(`preview-banner-${type}`);
+          const inputEl = document.getElementById(`input-banner-${type}`);
+          if (imageUrl) {
+            if (previewEl) previewEl.src = imageUrl;
+            if (inputEl) inputEl.value = imageUrl;
+          }
+        }
+      });
+    });
+  }
+
+  // Live preview updates
+  window.updateSliderPreview = function(index, url) {
+    const preview = document.getElementById('preview-slider-' + index);
+    if (preview) {
+      preview.src = url || `https://via.placeholder.com/400x200/000/fff?text=SLIDER+${index}`;
+    }
+  };
+
+  window.updateBannerPreview = function(type, url) {
+    const preview = document.getElementById(`preview-banner-${type}`);
+    if (preview) {
+      preview.src = url || `https://via.placeholder.com/400x200/000/fff?text=${type.toUpperCase()}+BANNER`;
+    }
+  };
+
+  // Save slider URL directly to Firestore
+  window.updateSlider = async function(docId, index) {
+    const input = document.getElementById('input-slider-' + index);
+    const url = input ? input.value.trim() : '';
+    const btn = document.getElementById('btn-update-slider-' + index);
+    
+    if (!url) {
+      window.showToast(`Please enter a URL for Slider ${index}.`, "warning");
+      return;
+    }
+
+    if (!isValidHttpUrl(url)) {
+      window.showToast("Invalid URL! Must start with http:// or https://", "error");
+      return;
+    }
+
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "SAVING...";
+
+    try {
+      await setDoc(doc(db, "sliderImages", docId), {
+        imageUrl: url,
+        url: url,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      window.showToast(`Slider ${index} updated successfully!`, "success");
+    } catch (err) {
+      window.showToast("Failed to update slider: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }
+  };
+
+  // Save category banner URL directly to Firestore (sliderImages collection)
+  window.saveCategoryBannerUrl = async function(type) {
+    const cleanType = type.toLowerCase().trim();
+    let docName = "";
+    if (cleanType === 'solo') docName = "soloBanner";
+    else if (cleanType === 'duo') docName = "duoBanner";
+    else if (cleanType === 'squad') docName = "squadBanner";
+    else {
+      window.showToast("Invalid category banner type requested.", "error");
+      return;
+    }
+
+    const input = document.getElementById('input-banner-' + cleanType);
+    const url = input ? input.value.trim() : '';
+    
+    if (!url) {
+      window.showToast(`Please enter a URL for ${cleanType.toUpperCase()} banner.`, "warning");
+      return;
+    }
+
+    if (!isValidHttpUrl(url)) {
+      window.showToast("Invalid URL! Must start with http:// or https://", "error");
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, "sliderImages", docName), {
+        imageUrl: url,
+        url: url,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      window.showToast(`${cleanType.toUpperCase()} banner updated successfully!`, "success");
+    } catch (err) {
+      window.showToast("Failed to update banner: " + err.message, "error");
+    }
+  };
+
+  // Initialize assets when loaded
+  document.addEventListener("DOMContentLoaded", () => {
+    initVisualAssets();
+  });
+</script>
+<script type="module" src="./notifications.js"></script>
+<script type="module" src="./reports.js"></script>
+<script type="module" src="./settings.js"></script>
+<script type="module" src="./analytics.js"></script>
+<script type="module" src="./matchesManager.js"></script>
+</body>
+</html>
